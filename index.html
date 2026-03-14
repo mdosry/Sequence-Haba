@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سكوينس هبّة - أونلاين 🌐</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        /* (نفس تنسيقات الكود السابق مع إضافة بسيطة للغرف) */
+        :root { --navy: #0d1b2a; --gold: #e1b12c; --white: #f5f6fa; }
+        body { background: var(--navy); font-family: 'Tajawal', sans-serif; color: white; margin: 0; text-align: center; }
+        .room-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: var(--navy); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        input { padding: 15px; border-radius: 10px; border: none; width: 200px; margin: 10px; font-size: 18px; text-align: center; }
+        .btn { background: var(--gold); color: var(--navy); padding: 15px 30px; border-radius: 10px; font-weight: 800; cursor: pointer; border: none; }
+        /* بقية التنسيقات اللوحة والورق كما هي في الكود السابق */
+        .board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2.5px; background: var(--gold); padding: 5px; width: 94vw; max-width: 480px; aspect-ratio: 1/1; margin: 0 auto; }
+        .cell { background: #1b263b; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; position: relative; height: 100%; border-radius: 3px; }
+        .chip { width: 85%; height: 85%; border-radius: 50%; border: 2px solid white; position: absolute; z-index: 5; }
+        .chip-red { background: #ff4757; } .chip-blue { background: #2e86de; }
+        .player-hand { position: fixed; bottom: 0; width: 100%; background: rgba(0,0,0,0.8); padding: 20px 0; display: flex; justify-content: center; gap: 8px; border-top: 2px solid var(--gold); }
+        .card { width: 50px; height: 75px; background: white; color: black; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+        .card.selected { transform: translateY(-20px); border: 2px solid var(--gold); }
+    </style>
+</head>
+<body>
+
+    <div id="room-screen" class="room-overlay">
+        <h1 style="color:var(--gold)">سكوينس أونلاين</h1>
+        <input type="text" id="room-id" placeholder="أدخل رقم الغرفة">
+        <button class="btn" onclick="joinRoom()">دخول الغرفة</button>
+        <p style="font-size: 12px; margin-top: 20px;">اتفق مع خويك على نفس الرقم</p>
+    </div>
+
+    <div id="game-ui" class="hidden" style="display:none">
+        <div style="padding: 10px; font-weight: 800;">غرفة: <span id="display-room-id" style="color:var(--gold)"></span></div>
+        <div id="turn-txt" style="margin-bottom: 10px;">انتظر دورك...</div>
+        <div id="board" class="board"></div>
+        <div class="player-hand" id="hand"></div>
+    </div>
+
+    <script>
+        // 🚨 استبدل هذا الجزء بمفاتيحك من Firebase
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let roomID, myRole, currentTurn = 'red', selectedCard = null;
+
+        function joinRoom() {
+            roomID = document.getElementById('room-id').value;
+            if(!roomID) return alert("أدخل رقم الغرفة!");
+
+            document.getElementById('room-screen').style.display = 'none';
+            document.getElementById('game-ui').style.display = 'block';
+            document.getElementById('display-room-id').innerText = roomID;
+
+            // الاستماع للحركات في الغرفة
+            db.ref('rooms/' + roomID).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if(data && data.moves) updateBoard(data.moves);
+                if(data && data.turn) {
+                    currentTurn = data.turn;
+                    document.getElementById('turn-txt').innerText = "دور الفريق: " + (currentTurn === 'red' ? "الأحمر 🔴" : "الأزرق 🔵");
+                }
+            });
+
+            initBoard();
+        }
+
+        function initBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            // إنشاء اللوحة (ثابتة للكل بنفس الترتيب)
+            // ملاحظة: في النسخة الاحترافية يجب أن تكون اللوحة مخزنة في السيرفر لضمان تطابقها
+            // هنا سنستخدم أرقام ثابتة للتبسيط حالياً
+            for (let i = 0; i < 100; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = 'cell-' + i;
+                cell.onclick = () => play(i);
+                board.appendChild(cell);
+            }
+            for (let i = 0; i < 6; i++) drawCard();
+        }
+
+        function play(idx) {
+            if(!selectedCard) return;
+            // إرسال الحركة لفايربيس
+            db.ref('rooms/' + roomID + '/moves/' + idx).set({
+                player: currentTurn,
+                timestamp: Date.now()
+            });
+            // تبديل الدور في السيرفر
+            db.ref('rooms/' + roomID).update({
+                turn: currentTurn === 'red' ? 'blue' : 'red'
+            });
+            selectedCard.remove(); selectedCard = null; drawCard();
+        }
+
+        function updateBoard(moves) {
+            Object.keys(moves).forEach(idx => {
+                const cell = document.getElementById('cell-' + idx);
+                if(!cell.innerHTML) {
+                    const player = moves[idx].player;
+                    cell.innerHTML = `<div class="chip chip-${player}"></div>`;
+                }
+            });
+        }
+
+        function drawCard() { /* (نفس دالة سحب الورق السابقة) */ }
+    </script>
+</body>
+</html>
