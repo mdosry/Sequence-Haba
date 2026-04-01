@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEQUENCE Online 3P | Abu Saad</title>
+    <title>SEQUENCE Online | Abu Saad</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -11,19 +11,17 @@
         :root { --bg: #0d1219; --gold: #f1c40f; --p1: #3498db; --p2: #e74c3c; --p3: #2ecc71; }
         body { background: var(--bg); font-family: 'Tajawal', sans-serif; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        /* شاشة الدخول */
+        /* واجهة الدخول */
         #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .input-group { margin: 10px; text-align: center; }
-        input { padding: 12px; border-radius: 8px; border: none; width: 250px; font-size: 16px; text-align: center; outline: none; }
-        .btn-entry { padding: 12px 50px; background: var(--gold); border: none; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 18px; margin-top: 15px; }
+        input { padding: 12px; border-radius: 8px; border: none; width: 250px; margin: 10px; text-align: center; font-size: 16px; font-family: 'Tajawal'; }
+        .btn-entry { padding: 12px 60px; background: var(--gold); border: none; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 18px; }
 
-        /* الهيدر */
+        /* اللوحة والعناصر */
         .header { width: 100%; background: #161b22; padding: 15px; border-bottom: 2px solid var(--gold); text-align: center; }
         .players-bar { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
         .p-tag { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; border: 2px solid #333; }
-        .active { background: white; color: black !important; border-color: white; }
+        .active { background: white; color: black !important; border-color: white; box-shadow: 0 0 10px white; }
 
-        /* اللوحة */
         .board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #2c3e50; padding: 5px; border-radius: 8px; width: 95vw; max-width: 550px; aspect-ratio: 1/1; margin: 20px 0; }
         .cell { background: #fff; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #000; font-weight: bold; position: relative; cursor: pointer; }
         .cell.red-suit { color: var(--p2); }
@@ -31,10 +29,9 @@
         .chip { position: absolute; width: 85%; height: 85%; border-radius: 50%; border: 2px solid rgba(0,0,0,0.2); z-index: 5; }
         .c1 { background: var(--p1); } .c2 { background: var(--p2); } .c3 { background: var(--p3); }
 
-        /* الأوراق السفلى */
         .hand-area { position: fixed; bottom: 0; width: 100%; background: #161b22; padding: 10px; border-top: 2px solid var(--gold); text-align: center; }
         .hand { display: flex; overflow-x: auto; justify-content: center; gap: 6px; padding: 10px 0; }
-        .card { min-width: 45px; height: 65px; background: white; color: black; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .card { min-width: 45px; height: 65px; background: white; color: black; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; cursor: pointer; border: 2px solid transparent; }
         .selected { transform: translateY(-10px); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
     </style>
 </head>
@@ -42,9 +39,9 @@
 
     <div id="login-screen">
         <h1 style="color:var(--gold)">SEQUENCE ONLINE</h1>
-        <div class="input-group"><input type="text" id="uName" placeholder="اسمك"></div>
-        <div class="input-group"><input type="text" id="rNum" placeholder="رقم الغرفة"></div>
-        <button class="btn-entry" onclick="joinGame()">دخول</button>
+        <input type="text" id="uName" placeholder="أدخل اسمك">
+        <input type="text" id="rNum" placeholder="رقم الغرفة">
+        <button class="btn-entry" onclick="joinGame()">دخول اللعبة</button>
     </div>
 
     <div class="header">
@@ -59,44 +56,40 @@
     <div class="board" id="game-board"></div>
 
     <div class="hand-area">
-        <div style="font-size:12px">أوراقك (اضغط للتمويه ثم على اللوحة):</div>
+        <div id="turn-msg" style="font-size:12px; color:var(--gold)">أوراقك (بانتظار دورك)</div>
         <div class="hand" id="my-hand"></div>
     </div>
 
     <script>
-        // 1. إعدادات فايربيس (انسخها من مشروعك)
+        // دمج بيانات الـ Firebase الخاصة بك من الصورة
         const firebaseConfig = {
-            apiKey: "ضع_مفتاحك_هنا",
-            databaseURL: "ضع_رابط_القاعدة_هنا",
-            projectId: "ID_مشروعك",
-            appId: "APP_ID_حقك"
+            apiKey: "AIzaSyBSs_wXZVfKis4NNCf6wE9h338AEz9FWBo",
+            authDomain: "mysequence.firebaseapp.com",
+            projectId: "mysequence",
+            storageBucket: "mysequence.firebasestorage.app",
+            messagingSenderId: "488413272966",
+            appId: "1:488413272966:web:7231064a5a216ed023aa07",
+            // ضع رابط الـ Database الخاص بك هنا (تأكد من تفعيل Realtime Database)
+            databaseURL: "https://mysequence-default-rtdb.firebaseio.com/" 
         };
 
-        // تهيئة فايربيس مع فحص للخطأ
-        try {
-            firebase.initializeApp(firebaseConfig);
-            var db = firebase.database();
-        } catch(e) {
-            console.error("Firebase Init Error", e);
-        }
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        let myRole = null;
-        let room = null;
-        let selCard = null;
+        let myRole = null, room = null, selCard = null;
         const suits = { h: '♥', d: '♦', s: '♠', c: '♣' };
         const layout = ["FREE","6c","7c","8c","9c","10c","Qc","Kc","Ac","FREE","5c","3h","2h","2s","3s","4s","5s","6s","7s","Ad","4c","4h","Kd","Ad","As","10s","9s","8s","7s","Kd","3c","5h","Qd","Qh","10h","9h","8h","7h","2s","Qd","2c","6h","10d","7h","Kh","Ah","2d","6h","3s","10d","As","7h","9d","8h","2c","3c","10c","5h","4s","9d","Ks","8h","8d","9h","Qc","10d","Qs","4h","5s","8d","Qs","9h","7d","10h","Kc","Ac","3d","3h","6s","7d","10s","Qh","6d","5d","4d","3d","2d","2h","Ah","6d","FREE","9s","8s","7s","6s","5s","4s","3s","2s","FREE"];
 
         function joinGame() {
             const name = document.getElementById('uName').value;
             const rID = document.getElementById('rNum').value;
-            if(!name || !rID) return alert("كمل البيانات!");
+            if(!name || !rID) return alert("سجل بياناتك يا بطل!");
 
-            room = db.ref('rooms/' + rID);
-            
+            room = db.ref('seq_rooms/' + rID);
             room.child('players').once('value').then(snap => {
                 let players = snap.val() || {};
                 let count = Object.keys(players).length;
-                if(count >= 3) return alert("الغرفة فل!");
+                if(count >= 3) return alert("الغرفة ممتلئة!");
 
                 myRole = count + 1;
                 room.child('players/p'+myRole).set({name: name, id: myRole}).then(() => {
@@ -105,7 +98,7 @@
                     if(myRole === 1) startNewGame();
                     syncGame();
                 });
-            }).catch(err => alert("مشكلة في الاتصال بالـ Firebase: " + err.message));
+            });
         }
 
         function startNewGame() {
@@ -124,14 +117,11 @@
             room.on('value', snap => {
                 const data = snap.val();
                 if(!data || !data.state) return;
-                
-                // الأدوار
                 for(let i=1; i<=3; i++){
                     const tag = document.getElementById('p'+i+'-t');
                     tag.innerText = (data.players['p'+i] ? data.players['p'+i].name : "انتظار");
                     tag.classList.toggle('active', data.state.turn === i);
                 }
-
                 drawBoard(data.state.chips);
                 drawHand(data.state['p'+myRole+'H'], data.state.turn);
             });
@@ -158,6 +148,7 @@
             const h = document.getElementById('my-hand');
             h.innerHTML = '';
             if(!hand) return;
+            document.getElementById('turn-msg').innerText = turn === myRole ? "دورك الآن! اختر كرت" : "انتظر دور المنافسين...";
             hand.forEach((card, i) => {
                 const d = document.createElement('div');
                 d.className = 'card' + (card.match(/[hd]/) ? ' red-suit' : '') + (selCard && selCard.i === i ? ' selected' : '');
