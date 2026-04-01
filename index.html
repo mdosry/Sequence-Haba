@@ -5,228 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SEQUENCE Online 3P | Abu Saad</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
-        :root { --bg: #0d1219; --gold: #f1c40f; --p1: #3498db; --p2: #e74c3c; --p3: #2ecc71; --white: #ffffff; }
-        body { background: var(--bg); font-family: 'Tajawal', sans-serif; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        :root { --bg: #0d1219; --gold: #f1c40f; --p1: #3498db; --p2: #e74c3c; --p3: #2ecc71; }
+        body { background: var(--bg); font-family: 'Tajawal', sans-serif; color: white; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        /* الهيدر والأسماء */
-        .header { width: 100%; background: #161b22; padding: 15px; text-align: center; border-bottom: 2px solid var(--gold); position: sticky; top: 0; z-index: 100; }
-        .players-bar { display: flex; justify-content: center; gap: 15px; margin-top: 10px; flex-wrap: wrap; }
-        .p-tag { padding: 5px 15px; border-radius: 15px; font-size: 14px; font-weight: bold; border: 2px solid transparent; }
-        .p1-style { border-color: var(--p1); color: var(--p1); }
-        .p2-style { border-color: var(--p2); color: var(--p2); }
-        .p3-style { border-color: var(--p3); color: var(--p3); }
-        .active-turn { background: white; color: black !important; box-shadow: 0 0 10px white; }
+        /* شاشة الدخول */
+        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .input-group { margin: 10px; text-align: center; }
+        input { padding: 12px; border-radius: 8px; border: none; width: 250px; font-size: 16px; text-align: center; outline: none; }
+        .btn-entry { padding: 12px 50px; background: var(--gold); border: none; border-radius: 8px; font-weight: 900; cursor: pointer; font-size: 18px; margin-top: 15px; }
+
+        /* الهيدر */
+        .header { width: 100%; background: #161b22; padding: 15px; border-bottom: 2px solid var(--gold); text-align: center; }
+        .players-bar { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .p-tag { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; border: 2px solid #333; }
+        .active { background: white; color: black !important; border-color: white; }
 
         /* اللوحة */
-        .board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #2c3e50; padding: 5px; border-radius: 8px; width: 95vw; max-width: 600px; aspect-ratio: 1/1; margin: 20px 0; }
-        .cell { background: #fff; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #000; font-weight: bold; position: relative; cursor: pointer; transition: 0.2s; }
-        .cell span { pointer-events: none; }
+        .board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; background: #2c3e50; padding: 5px; border-radius: 8px; width: 95vw; max-width: 550px; aspect-ratio: 1/1; margin: 20px 0; }
+        .cell { background: #fff; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #000; font-weight: bold; position: relative; cursor: pointer; }
         .cell.red-suit { color: var(--p2); }
         .cell.corner { background: var(--gold); }
-        .cell:hover { background: #eee; }
+        .chip { position: absolute; width: 85%; height: 85%; border-radius: 50%; border: 2px solid rgba(0,0,0,0.2); z-index: 5; }
+        .c1 { background: var(--p1); } .c2 { background: var(--p2); } .c3 { background: var(--p3); }
 
-        /* الفيشات */
-        .chip { position: absolute; width: 85%; height: 85%; border-radius: 50%; border: 2px solid rgba(0,0,0,0.3); z-index: 5; animation: pop 0.3s ease; }
-        .chip.c1 { background: var(--p1); } .chip.c2 { background: var(--p2); } .chip.c3 { background: var(--p3); }
-        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
-
-        /* منطقة أوراقي */
-        .hand-section { width: 100%; max-width: 600px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 20px 20px 0 0; position: fixed; bottom: 0; text-align: center; border-top: 2px solid var(--gold); }
-        .hand { display: flex; overflow-x: auto; justify-content: center; gap: 8px; padding: 10px; }
-        .card { min-width: 50px; height: 75px; background: white; color: black; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; cursor: pointer; transition: 0.3s; border: 3px solid transparent; }
-        .card.selected { transform: translateY(-15px); border-color: var(--gold); box-shadow: 0 5px 15px var(--gold); }
-        .card.red-suit { color: var(--p2); }
-
-        /* شاشة البداية */
-        #login { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .input-box { padding: 12px; border-radius: 10px; border: none; width: 250px; margin: 10px; font-family: 'Tajawal'; font-size: 18px; text-align: center; }
-        .btn-start { padding: 12px 40px; background: var(--gold); border: none; border-radius: 10px; font-weight: 900; cursor: pointer; font-size: 18px; }
+        /* الأوراق السفلى */
+        .hand-area { position: fixed; bottom: 0; width: 100%; background: #161b22; padding: 10px; border-top: 2px solid var(--gold); text-align: center; }
+        .hand { display: flex; overflow-x: auto; justify-content: center; gap: 6px; padding: 10px 0; }
+        .card { min-width: 45px; height: 65px; background: white; color: black; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .selected { transform: translateY(-10px); border-color: var(--gold); box-shadow: 0 0 10px var(--gold); }
     </style>
 </head>
 <body>
 
-    <div id="login">
+    <div id="login-screen">
         <h1 style="color:var(--gold)">SEQUENCE ONLINE</h1>
-        <input type="text" id="userName" class="input-box" placeholder="أدخل اسمك">
-        <input type="text" id="roomNum" class="input-box" placeholder="رقم الغرفة (مثلاً 555)">
-        <button class="btn-start" onclick="joinGame()">دخول اللعبة 🃏</button>
+        <div class="input-group"><input type="text" id="uName" placeholder="اسمك"></div>
+        <div class="input-group"><input type="text" id="rNum" placeholder="رقم الغرفة"></div>
+        <button class="btn-entry" onclick="joinGame()">دخول</button>
     </div>
 
     <div class="header">
-        <div id="room-id-display">غرفة: --</div>
-        <div class="players-bar" id="players-list">
-            <div class="p-tag p1-style" id="p1-tag">انتظار...</div>
-            <div class="p-tag p2-style" id="p2-tag">انتظار...</div>
-            <div class="p-tag p3-style" id="p3-tag">انتظار...</div>
+        <div id="room-info">غرفة: --</div>
+        <div class="players-bar">
+            <div id="p1-t" class="p-tag" style="color:var(--p1)">لاعب 1</div>
+            <div id="p2-t" class="p-tag" style="color:var(--p2)">لاعب 2</div>
+            <div id="p3-t" class="p-tag" style="color:var(--p3)">لاعب 3</div>
         </div>
     </div>
 
-    <div class="board" id="board"></div>
+    <div class="board" id="game-board"></div>
 
-    <div class="hand-section">
-        <div id="my-name-display" style="font-size:12px; margin-bottom:5px; color:var(--gold)">أوراقك:</div>
+    <div class="hand-area">
+        <div style="font-size:12px">أوراقك (اضغط للتمويه ثم على اللوحة):</div>
         <div class="hand" id="my-hand"></div>
     </div>
 
     <script>
-        // تكوين Firebase - ضع مفاتيحك هنا
+        // 1. إعدادات فايربيس (انسخها من مشروعك)
         const firebaseConfig = {
-            apiKey: "ضع_هنا_API_KEY",
-            databaseURL: "ضع_هنا_DATABASE_URL",
-            projectId: "PROJECT_ID",
-            storageBucket: "STORAGE_BUCKET",
-            messagingSenderId: "SENDER_ID",
-            appId: "APP_ID"
+            apiKey: "ضع_مفتاحك_هنا",
+            databaseURL: "ضع_رابط_القاعدة_هنا",
+            projectId: "ID_مشروعك",
+            appId: "APP_ID_حقك"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
 
-        let myRole = null; // 1, 2, or 3
-        let roomRef = null;
-        let selectedCard = null;
+        // تهيئة فايربيس مع فحص للخطأ
+        try {
+            firebase.initializeApp(firebaseConfig);
+            var db = firebase.database();
+        } catch(e) {
+            console.error("Firebase Init Error", e);
+        }
+
+        let myRole = null;
+        let room = null;
+        let selCard = null;
         const suits = { h: '♥', d: '♦', s: '♠', c: '♣' };
-        const layout = [
-            "FREE","6c","7c","8c","9c","10c","Qc","Kc","Ac","FREE",
-            "5c","3h","2h","2s","3s","4s","5s","6s","7s","Ad",
-            "4c","4h","Kd","Ad","As","10s","9s","8s","7s","Kd",
-            "3c","5h","Qd","Qh","10h","9h","8h","7h","2s","Qd",
-            "2c","6h","10d","7h","Kh","Ah","2d","6h","3s","10d",
-            "As","7h","9d","8h","2c","3c","10c","5h","4s","9d",
-            "Ks","8h","8d","9h","Qc","10d","Qs","4h","5s","8d",
-            "Qs","9h","7d","10h","Kc","Ac","3d","3h","6s","7d",
-            "10s","Qh","6d","5d","4d","3d","2d","2h","Ah","6d",
-            "FREE","9s","8s","7s","6s","5s","4s","3s","2s","FREE"
-        ];
+        const layout = ["FREE","6c","7c","8c","9c","10c","Qc","Kc","Ac","FREE","5c","3h","2h","2s","3s","4s","5s","6s","7s","Ad","4c","4h","Kd","Ad","As","10s","9s","8s","7s","Kd","3c","5h","Qd","Qh","10h","9h","8h","7h","2s","Qd","2c","6h","10d","7h","Kh","Ah","2d","6h","3s","10d","As","7h","9d","8h","2c","3c","10c","5h","4s","9d","Ks","8h","8d","9h","Qc","10d","Qs","4h","5s","8d","Qs","9h","7d","10h","Kc","Ac","3d","3h","6s","7d","10s","Qh","6d","5d","4d","3d","2d","2h","Ah","6d","FREE","9s","8s","7s","6s","5s","4s","3s","2s","FREE"];
 
         function joinGame() {
-            const name = document.getElementById('userName').value;
-            const room = document.getElementById('roomNum').value;
-            if(!name || !room) return alert("عب البيانات يا بطل!");
+            const name = document.getElementById('uName').value;
+            const rID = document.getElementById('rNum').value;
+            if(!name || !rID) return alert("كمل البيانات!");
 
-            roomRef = db.ref('seq_rooms/' + room);
-            document.getElementById('room-id-display').innerText = "غرفة: " + room;
-
-            roomRef.child('players').once('value', snapshot => {
-                let players = snapshot.val() || {};
+            room = db.ref('rooms/' + rID);
+            
+            room.child('players').once('value').then(snap => {
+                let players = snap.val() || {};
                 let count = Object.keys(players).length;
-
-                if(count >= 3) return alert("الغرفة كاملة!");
+                if(count >= 3) return alert("الغرفة فل!");
 
                 myRole = count + 1;
-                roomRef.child('players/p' + myRole).set({ name: name, id: myRole });
-                document.getElementById('login').style.display = 'none';
-
-                if(myRole === 1) setupNewGame(); // أول واحد يدخل يجهز السطحة
-                listenToGame();
-            });
+                room.child('players/p'+myRole).set({name: name, id: myRole}).then(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('room-info').innerText = "غرفة: " + rID;
+                    if(myRole === 1) startNewGame();
+                    syncGame();
+                });
+            }).catch(err => alert("مشكلة في الاتصال بالـ Firebase: " + err.message));
         }
 
-        function setupNewGame() {
-            let deck = [];
+        function startNewGame() {
+            let d = [];
             ['h','d','s','c'].forEach(s => {
-                ['A',2,3,4,5,6,7,8,9,10,'Q','K'].forEach(v => { deck.push(v+s); deck.push(v+s); });
+                ['A',2,3,4,5,6,7,8,9,10,'Q','K'].forEach(v => { d.push(v+s); d.push(v+s); });
             });
-            deck = deck.sort(() => Math.random() - 0.5);
-
-            roomRef.child('gameState').set({
-                p1Hand: deck.splice(0, 10),
-                p2Hand: deck.splice(0, 10),
-                p3Hand: deck.splice(0, 10),
-                remainingDeck: deck,
-                turn: 1,
-                chips: {}
+            d = d.sort(() => Math.random() - 0.5);
+            room.child('state').set({
+                p1H: d.splice(0, 10), p2H: d.splice(0, 10), p3H: d.splice(0, 10),
+                deck: d, turn: 1, chips: {}
             });
         }
 
-        function listenToGame() {
-            roomRef.on('value', snapshot => {
-                const data = snapshot.val();
-                if(!data) return;
-
-                // تحديث الأسماء والأدوار
-                for(let i=1; i<=3; i++) {
-                    const p = data.players ? data.players['p'+i] : null;
-                    const tag = document.getElementById('p'+i+'-tag');
-                    tag.innerText = p ? p.name : "انتظار...";
-                    tag.classList.toggle('active-turn', data.gameState.turn === i);
+        function syncGame() {
+            room.on('value', snap => {
+                const data = snap.val();
+                if(!data || !data.state) return;
+                
+                // الأدوار
+                for(let i=1; i<=3; i++){
+                    const tag = document.getElementById('p'+i+'-t');
+                    tag.innerText = (data.players['p'+i] ? data.players['p'+i].name : "انتظار");
+                    tag.classList.toggle('active', data.state.turn === i);
                 }
 
-                renderBoard(data.gameState.chips);
-                renderMyHand(data.gameState['p' + myRole + 'Hand'], data.gameState.turn);
+                drawBoard(data.state.chips);
+                drawHand(data.state['p'+myRole+'H'], data.state.turn);
             });
         }
 
-        function renderBoard(chips) {
-            const b = document.getElementById('board');
+        function drawBoard(chips) {
+            const b = document.getElementById('game-board');
             b.innerHTML = '';
             layout.forEach((code, i) => {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                if(code.includes('h') || code.includes('d')) cell.classList.add('red-suit');
-                if(code === "FREE") cell.classList.add('corner');
-
-                cell.innerHTML = `<span>${code === "FREE" ? "⭐" : code.replace('h',suits.h).replace('d',suits.d).replace('s',suits.s).replace('c',suits.c)}</span>`;
-                
+                const c = document.createElement('div');
+                c.className = 'cell' + (code.match(/[hd]/) ? ' red-suit' : '') + (code==="FREE" ? ' corner' : '');
+                c.innerHTML = code==="FREE" ? "⭐" : code.replace('h',suits.h).replace('d',suits.d).replace('s',suits.s).replace('c',suits.c);
                 if(chips && chips[i]) {
-                    const chip = document.createElement('div');
-                    chip.className = `chip c${chips[i]}`;
-                    cell.appendChild(chip);
+                    const ch = document.createElement('div');
+                    ch.className = 'chip c' + chips[i];
+                    c.appendChild(ch);
                 }
-
-                cell.onclick = () => playCard(i, code);
-                b.appendChild(cell);
+                c.onclick = () => play(i, code);
+                b.appendChild(c);
             });
         }
 
-        function renderMyHand(hand, turn) {
-            const hDiv = document.getElementById('my-hand');
-            hDiv.innerHTML = '';
+        function drawHand(hand, turn) {
+            const h = document.getElementById('my-hand');
+            h.innerHTML = '';
             if(!hand) return;
-
-            hand.forEach((cardCode, idx) => {
-                const card = document.createElement('div');
-                card.className = `card ${ (cardCode.includes('h') || cardCode.includes('d')) ? 'red-suit' : ''}`;
-                if(selectedCard && selectedCard.idx === idx) card.classList.add('selected');
-                
-                card.innerHTML = `<span>${cardCode.slice(0,-1)}${suits[cardCode.slice(-1)]}</span>`;
-                card.onclick = () => {
-                    if(turn !== myRole) return alert("مو دورك!");
-                    selectedCard = { code: cardCode, idx: idx };
-                    renderMyHand(hand, turn);
-                };
-                hDiv.appendChild(card);
+            hand.forEach((card, i) => {
+                const d = document.createElement('div');
+                d.className = 'card' + (card.match(/[hd]/) ? ' red-suit' : '') + (selCard && selCard.i === i ? ' selected' : '');
+                d.innerHTML = card.slice(0,-1) + suits[card.slice(-1)];
+                d.onclick = () => { if(turn === myRole) { selCard = {c:card, i:i}; drawHand(hand, turn); } };
+                h.appendChild(d);
             });
         }
 
-        function playCard(cellIdx, cellCode) {
-            if(!selectedCard || cellCode === "FREE") return;
-
-            roomRef.child('gameState').once('value', snap => {
-                const state = snap.val();
-                if(state.turn !== myRole) return;
-                if(state.chips && state.chips[cellIdx]) return alert("الخانة محجوزة!");
-
-                if(selectedCard.code === cellCode) {
-                    const updates = {};
-                    updates[`gameState/chips/${cellIdx}`] = myRole;
-                    
-                    let newHand = state['p'+myRole+'Hand'];
-                    newHand.splice(selectedCard.idx, 1);
-                    
-                    let deck = state.remainingDeck;
-                    if(deck.length > 0) newHand.push(deck.shift());
-                    
-                    updates[`gameState/p${myRole}Hand`] = newHand;
-                    updates['gameState/remainingDeck'] = deck;
-                    updates['gameState/turn'] = myRole === 3 ? 1 : myRole + 1;
-
-                    roomRef.update(updates);
-                    selectedCard = null;
-                } else {
-                    alert("الكرت ما يطابق الخانة!");
+        function play(idx, code) {
+            if(!selCard || code === "FREE") return;
+            room.child('state').once('value', snap => {
+                const s = snap.val();
+                if(s.turn !== myRole || (s.chips && s.chips[idx])) return;
+                if(selCard.c === code) {
+                    let h = s['p'+myRole+'H']; h.splice(selCard.i, 1);
+                    let dk = s.deck; if(dk.length > 0) h.push(dk.shift());
+                    let up = {};
+                    up['state/chips/'+idx] = myRole;
+                    up['state/p'+myRole+'H'] = h;
+                    up['state/deck'] = dk;
+                    up['state/turn'] = s.turn === 3 ? 1 : s.turn + 1;
+                    room.update(up);
+                    selCard = null;
                 }
             });
         }
